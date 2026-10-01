@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Churn Intelligence — Presentasi Pipeline Decision Tree + SMOTE/RUS</title>
+<meta name="description" content="Presentasi tahap demi tahap klasifikasi churn nasabah: dataset, preprocessing, transformation, split, resampling SMOTE/RUS, Decision Tree, dan evaluasi.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ══════════════ ATMOSPHERE: mesh orbs + grain (fixed, GPU-safe) ══════════ -->
+<div class="atmosphere" aria-hidden="true">
+  <div class="orb orb--violet"></div>
+  <div class="orb orb--emerald"></div>
+  <div class="orb orb--azure"></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ══════════════ FLUID ISLAND NAV ══════════════ -->
+<header class="nav-shell">
+  <nav class="nav-pill" id="navPill">
+    <a class="nav-brand" href="#hero">
+      <span class="nav-brand__mark">◈</span>
+      <span class="nav-brand__name">Churn<em>Intel</em></span>
+    </a>
+    <div class="nav-links">
+      <a href="#dataset">Dataset</a>
+      <a href="#tahapan">Tahapan</a>
+      <a href="#evaluasi">Evaluasi</a>
+    </div>
+    <a class="nav-cta" href="#tahapan">
+      Lihat Alur
+      <span class="nav-cta__dot">↗</span>
+    </a>
+    <button class="burger" id="burger" aria-label="Buka menu" aria-expanded="false">
+      <span class="burger__line"></span>
+      <span class="burger__line"></span>
+    </button>
+  </nav>
+</header>
+
+<!-- Overlay menu (heavy glass, staggered mask reveal) -->
+<div class="menu-overlay" id="menuOverlay" aria-hidden="true">
+  <nav class="menu-overlay__inner">
+    <a href="#dataset" class="menu-link"><span class="menu-link__idx">01</span>Dataset</a>
+    <a href="#tahapan" class="menu-link"><span class="menu-link__idx">02</span>Tahapan</a>
+    <a href="#evaluasi" class="menu-link"><span class="menu-link__idx">03</span>Evaluasi</a>
+    <div class="menu-overlay__foot">
+      <span>Decision Tree · SMOTE / RUS</span>
+      <span>{{ stats.rows }} nasabah · {{ stats.cols }} kolom</span>
+    </div>
+  </nav>
+</div>
+
+<main>
+
+  <!-- ══════════════ HERO ══════════════ -->
+  <section class="hero" id="hero">
+    <div class="hero__inner">
+      <div class="eyebrow reveal">
+        <span class="eyebrow__pulse"></span>
+        UTS Praktikum Pembelajaran Mesin · Presentasi
+      </div>
+      <h1 class="hero__title">
+        <span class="reveal">Klasifikasi Decision Tree</span>
+        <span class="reveal hero__title--grad">dengan Resampling.</span>
+      </h1>
+      <p class="hero__sub reveal">
+        Perjalanan satu dataset — <strong>Bank Customer Churn Prediction</strong> — melewati
+        enam tahap: <strong>preprocessing</strong>, <strong>transformation</strong>,
+        <strong>split data</strong>, <strong>resampling SMOTE &amp; RUS</strong>,
+        <strong>klasifikasi Decision Tree</strong>, hingga <strong>evaluasi</strong>.
+        Setiap tahap dijelaskan: apa, untuk apa, dan kenapa.
+      </p>
+      <div class="hero__actions reveal">
+        <a href="#dataset" class="btn btn--primary group">
+          <span>Mulai dari Dataset</span>
+          <span class="btn__orb">↗</span>
+        </a>
+        <a href="#evaluasi" class="btn btn--ghost group">
+          <span>Langsung ke Hasil</span>
+          <span class="btn__orb btn__orb--ghost">→</span>
+        </a>
+      </div>
+
+      <!-- Stat strip -->
+      <div class="hero__stats reveal">
+        <div class="stat">
+          <span class="stat__value" data-count="{{ stats.rows }}">0</span>
+          <span class="stat__label">Baris Data</span>
+        </div>
+        <div class="stat__divider"></div>
+        <div class="stat">
+          <span class="stat__value" data-count="{{ stats.cols }}">0</span>
+          <span class="stat__label">Kolom</span>
+        </div>
+        <div class="stat__divider"></div>
+        <div class="stat">
+          <span class="stat__value" data-count="{{ stats.pct_churn }}" data-decimals="2" data-suffix="%">0</span>
+          <span class="stat__label">Kelas Churn</span>
+        </div>
+        <div class="stat__divider"></div>
+        <div class="stat">
+          <span class="stat__value" data-count="6">0</span>
+          <span class="stat__label">Tahap Pipeline</span>
+        </div>
+      </div>
+
+      <div class="hero__team reveal">
+        <span>M. Arviansyah Desta Andini — 434241003</span>
+        <span>Marsha Adhia Camilla — 434241005</span>
+        <span>Robithoh Ahmad — 434241014</span>
+      </div>
+    </div>
+    <div class="hero__scrollcue" aria-hidden="true"><span></span></div>
+  </section>
+
+  <!-- ══════════════ DATASET ══════════════ -->
+  <section class="section" id="dataset">
+    <div class="section__head">
+      <div class="eyebrow eyebrow--dim reveal">Tahap 0 · Input</div>
+      <h2 class="section__title reveal">Datanya apa,<br>variabelnya apa?</h2>
+      <p class="section__sub reveal">
+        Dataset <strong>Bank Customer Churn Prediction</strong>: rekaman {{ stats.rows }} nasabah bank
+        dengan {{ stats.cols }} kolom. Satu kolom menjadi <em>target</em> yang ingin diprediksi,
+        sembilan kolom menjadi <em>fitur</em> penjelasnya, dan satu kolom hanya identifier.
+      </p>
+    </div>
+
+    <!-- Target vs fitur — dua kartu kunci -->
+    <div class="key-grid">
+      <article class="key-card reveal">
+        <div class="key-card__inner">
+          <span class="chip chip--rose">Target · y</span>
+          <h3><code>churn</code></h3>
+          <p>
+            Kolom yang ingin diprediksi model. Bernilai <b>1</b> jika nasabah berhenti
+            (keluar dari bank) dan <b>0</b> jika bertahan. Karena hanya punya dua nilai,
+            ini adalah masalah <b>klasifikasi biner</b>.
+          </p>
+          <div class="bar-dual">
+            <div class="bar-dual__stay" style="--w: {{ stats.pct_tetap }}%"></div>
+            <div class="bar-dual__churn" style="--w: {{ stats.pct_churn }}%"></div>
+          </div>
+          <div class="bar-dual__legend">
+            <span><i class="dot dot--stay"></i>churn = 0 · {{ stats.n_tetap }} ({{ stats.pct_tetap }}%)</span>
+            <span><i class="dot dot--churn"></i>churn = 1 · {{ stats.n_churn }} ({{ stats.pct_churn }}%)</span>
+          </div>
+          <p class="key-card__note">
+            ⚠ Perhatikan: hanya sekitar 1 dari 5 nasabah yang churn. Ketidakseimbangan inilah
+            alasan tahap <b>resampling</b> ada.
+          </p>
+        </div>
+      </article>
+
+      <article class="key-card reveal">
+        <div class="key-card__inner">
+          <span class="chip chip--azure">Fitur · X (9 kolom)</span>
+          <h3>Sembilan sinyal penjelas</h3>
+          <p>
+            Informasi per-nasabah yang digunakan model untuk menebak churn:
+            <b>credit_score</b>, <b>country</b>, <b>gender</b>, <b>age</b>, <b>tenure</b>,
+            <b>balance</b>, <b>products_number</b>, <b>credit_card</b>, <b>active_member</b>,
+            dan <b>estimated_salary</b>.
+          </p>
+          <div class="mini-tags">
+            <span>numerik · 6</span>
+            <span>kategorikal · 2</span>
+            <span>biner · 3</span>
+          </div>
+          <p class="key-card__note">
+            <code>customer_id</code> tidak ikut menjadi fitur — nomor unik tidak mengandung
+            pola perilaku, hanya akan membingungkan model.
+          </p>
+        </div>
+      </article>
+    </div>
+
+    <!-- EDA ringan: churn rate per kelompok -->
+    <div class="eda-grid reveal">
+      <div class="eda-panel">
+        <span class="dist-core__title">Churn rate per negara</span>
+        {% for r in churn_country %}
+        <div class="rate-row">
+          <span class="rate-row__label">{{ r.label }}</span>
+          <span class="rate-row__track"><span class="rate-row__fill" style="--fill: {{ (r.rate / churn_rate_max * 100)|round(1) }}%"></span></span>
+          <span class="rate-row__val num">{{ r.rate }}% <i>(n={{ r.n }})</i></span>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="eda-panel">
+        <span class="dist-core__title">Churn rate per gender</span>
+        {% for r in churn_gender %}
+        <div class="rate-row">
+          <span class="rate-row__label">{{ r.label }}</span>
+          <span class="rate-row__track"><span class="rate-row__fill rate-row__fill--alt" style="--fill: {{ (r.rate / churn_rate_max * 100)|round(1) }}%"></span></span>
+          <span class="rate-row__val num">{{ r.rate }}% <i>(n={{ r.n }})</i></span>
+        </div>
+        {% endfor %}
+        <p class="stage__data-note">Perbedaan antar kelompok adalah sinyal awal bahwa fitur kategorikal ini membawa informasi — salah satu alasan ia dipertahankan sebagai fitur model.</p>
+      </div>
+    </div>
+
+    <!-- Tabel variabel lengkap -->
+    <div class="bezel table-bezel reveal">
+      <div class="bezel__core table-core">
+        <div class="table-head">
+          <span class="table-head__title">Struktur Variabel — 12 kolom</span>
+          <span class="table-head__hint">sesuai template laporan</span>
+        </div>
+        <div class="vartable" role="table">
+          <div class="vartable__row vartable__row--head" role="row">
+            <span role="columnheader">No</span>
+            <span role="columnheader">Kolom</span>
+            <span role="columnheader">Peran</span>
+            <span role="columnheader">Keterangan</span>
+          </div>
+          {% for no, kolom, peran, ket in variables %}
+          <div class="vartable__row" role="row">
+            <span class="vartable__no" role="cell">{{ no }}</span>
+            <span class="vartable__col" role="cell"><code>{{ kolom }}</code></span>
+            <span class="vartable__role" role="cell">
+              <i class="roledot {% if peran == 'Target' %}roledot--target{% elif 'kategorikal' in peran %}roledot--cat{% else %}roledot--num{% endif %}"></i>{{ peran }}
+            </span>
+            <span class="vartable__ket" role="cell">{{ ket }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ TAHAPAN — timeline vertikal ══════════════ -->
+  <section class="section" id="tahapan">
+    <div class="section__head">
+      <div class="eyebrow eyebrow--dim reveal">Alur Pipeline · Enam Tahap</div>
+      <h2 class="section__title reveal">Setiap tahap:<br>apa, untuk apa, kenapa.</h2>
+    </div>
+
+    <!-- ─── TAHAP 1 · PREPROCESSING ─── -->
+    <div class="stage reveal">
+      <div class="stage__side">
+        <span class="stage__num">01</span>
+        <h3 class="stage__name">Preprocessing</h3>
+        <span class="stage__pic">Arviansyah · preprocessing.py</span>
+      </div>
+      <div class="stage__body">
+        <div class="stage__qa">
+          <div class="qa">
+            <span class="qa__q">Apa?</span>
+            <p>Pemeriksaan kualitas data sebelum dipakai: <b>missing value</b>, <b>duplikasi</b>, dan <b>outlier</b> (metode IQR pada kolom numerik kontinu).</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Untuk apa?</span>
+            <p>Agar model belajar dari data yang bersih dan konsisten. Nilai kosong atau baris ganda bisa membuat pola yang dipelajari menjadi bias atau salah.</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Kenapa begitu?</span>
+            <p>Hasil aktual: missing <b>0</b>, duplikasi <b>0</b> — tidak perlu handling. Outlier (usia lansia, credit score rendah) <b>tidak dihapus</b> karena valid secara domain bisnis, dan Decision Tree tidak sensitif terhadap outlier maupun skala fitur. Menghapusnya justru membuang informasi.</p>
+          </div>
+        </div>
+        <div class="stage__data">
+          <div class="mini-metrics">
+            <div class="mini-metric"><b>0</b><span>missing value</span></div>
+            <div class="mini-metric"><b>0</b><span>duplikasi</span></div>
+            <div class="mini-metric"><b>5</b><span>kolom dicek IQR</span></div>
+            <div class="mini-metric"><b>10.000</b><span>baris utuh</span></div>
+          </div>
+          <div class="iqr-panel">
+            <span class="dist-core__title">Deteksi outlier IQR per kolom (Q1 − 1.5·IQR … Q3 + 1.5·IQR)</span>
+            {% for r in iqr_rows %}
+            <div class="rate-row">
+              <span class="rate-row__label rate-row__label--wide">{{ r.kolom }}</span>
+              <span class="iqr-bounds num">[{{ r.bawah }} … {{ r.atas }}]</span>
+              <span class="rate-row__track"><span class="rate-row__fill rate-row__fill--rose" style="--fill: {{ (r.outlier / iqr_max * 100)|round(1) }}%"></span></span>
+              <span class="rate-row__val num">{{ r.outlier }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="stage__data-note">Kolom yang dicek outlier: credit_score, age, tenure, balance, estimated_salary — sedangkan customer_id (identifier), credit_card &amp; active_member (biner), products_number (diskrit), dan churn (target) dikecualikan.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TAHAP 2 · SPLIT DATA ─── -->
+    <div class="stage reveal">
+      <div class="stage__side">
+        <span class="stage__num">02</span>
+        <h3 class="stage__name">Split Data<br>80% : 20%</h3>
+        <span class="stage__pic">Arviansyah · transformation.py</span>
+      </div>
+      <div class="stage__body">
+        <div class="stage__qa">
+          <div class="qa">
+            <span class="qa__q">Apa?</span>
+            <p>Data dibagi dua: <b>80% training</b> untuk melatih model dan <b>20% testing</b> untuk mengujinya. Pembagian bersifat <b>stratified</b> (proporsi churn tetap sama di kedua bagian) dengan <code>random_state=42</code> agar dapat direproduksi.</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Untuk apa?</span>
+            <p>Untuk mengukur kemampuan model pada data yang <b>belum pernah dilihat</b>. Menilai model dengan data latihnya sendiri seperti menilai ujian dengan soal yang sudah dihafal — hasilnya menipu.</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Kenapa di sini?</span>
+            <p>Split dilakukan <b>sebelum transformation</b>: encoder hanya boleh di-fit pada data training. Jika encoder melihat data testing lebih dulu, informasi dari data uji "bocor" ke proses pelatihan (<b>data leakage</b>) dan skor evaluasi menjadi terlalu optimis.</p>
+          </div>
+        </div>
+        <div class="stage__data">
+          {% for r in split_rows %}
+          <div class="split-row {% if r.persen == '80%' %}split-row--train{% else %}split-row--test{% endif %}">
+            <span class="split-row__label">{{ r.pembagian }}</span>
+            <span class="split-row__bar" style="--w: {{ r.persen }}"></span>
+            <span class="split-row__val num">{{ r.jumlah }} baris · {{ r.persen }}</span>
+          </div>
+          {% endfor %}
+          <p class="stage__data-note">Stratified split menjaga rasio 79,63 : 20,37 tetap terjaga di bagian training maupun testing.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TAHAP 3 · TRANSFORMATION ─── -->
+    <div class="stage reveal">
+      <div class="stage__side">
+        <span class="stage__num">03</span>
+        <h3 class="stage__name">Transformation<br>One-Hot Encoding</h3>
+        <span class="stage__pic">Arviansyah · transformation.py</span>
+      </div>
+      <div class="stage__body">
+        <div class="stage__qa">
+          <div class="qa">
+            <span class="qa__q">Apa?</span>
+            <p>Kolom kategorikal (<b>country</b>, <b>gender</b>) diubah menjadi kolom biner 0/1 lewat <b>One-Hot Encoding</b> dengan <code>drop="first"</code>. Fitur numerik diteruskan tanpa diubah (<code>passthrough</code>).</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Untuk apa?</span>
+            <p>Model matematika tidak bisa menghitung teks seperti "France" atau "Male". Encoding menerjemahkannya menjadi angka tanpa menciptakan urutan palsu (misalnya France=1, Spain=2 seolah Spain "lebih besar").</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Kenapa begitu?</span>
+            <p><code>drop="first"</code> menghindari <b>dummy variable trap</b> (kolom redundan yang saling menjelaskan). Encoder di-fit <b>hanya pada training</b>, lalu testing hanya di-transform — mencegah data leakage. Numerik tidak di-scale karena Decision Tree membagi data berdasarkan ambang batas, bukan jarak antar-titik.</p>
+          </div>
+        </div>
+        <div class="stage__data">
+          <div class="ohe-viz">
+            <div class="ohe-viz__before">
+              <span>sebelum · 10 fitur</span>
+              <code>country, gender, …</code>
+            </div>
+            <span class="ohe-viz__arrow">→</span>
+            <div class="ohe-viz__after">
+              <span>sesudah · {{ stats.features }} fitur</span>
+              <code>country_Germany, country_Spain, gender_Male, …</code>
+            </div>
+          </div>
+          <p class="stage__data-note">Nama fitur hasil encoding: {{ importance|length }} kolom numerik asli + kolom biner hasil One-Hot (asli France &amp; Male menjadi "basis" yang di-drop).</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TAHAP 4 · RESAMPLING ─── -->
+    <div class="stage reveal">
+      <div class="stage__side">
+        <span class="stage__num">04</span>
+        <h3 class="stage__name">Resampling<br>SMOTE &amp; RUS</h3>
+        <span class="stage__pic">Marsha · resampling.py</span>
+      </div>
+      <div class="stage__body">
+        <div class="stage__qa">
+          <div class="qa">
+            <span class="qa__q">Apa?</span>
+            <p>Dua strategi menyeimbangkan kelas pada <b>data training saja</b>: <b>SMOTE</b> (oversampling) membuat sintesis sampel baru kelas minoritas; <b>RUS</b> (undersampling) menghapus sampel kelas mayoritas secara acak.</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Untuk apa?</span>
+            <p>Data asli sangat timpang (± 80% : 20%). Model yang jujur pada data timpang akan pintar memprediksi kelas mayoritas dan "malas" menangkap churn — persis kelas yang justru paling penting dideteksi.</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Kenapa hanya training?</span>
+            <p>Data testing harus tetap mewakili <b>dunia nyata</b> yang timpang. Meresample data uji sama dengan mengubah soal ujian agar sesuai dengan jawaban — metrik evaluasi menjadi tidak sah. Inilah aturan tegas panduan UTS.</p>
+          </div>
+        </div>
+        <div class="stage__data">
+          <div class="bezel inner-bezel">
+            <div class="bezel__core dist-core">
+              <span class="dist-core__title">Distribusi kelas training (output aktual)</span>
+              <div class="distable">
+                <div class="distable__row distable__row--head">
+                  <span>Metode</span><span>Kelas 0</span><span>Kelas 1</span><span>Total</span>
+                </div>
+                {% for r in resampling_rows %}
+                <div class="distable__row">
+                  <span class="distable__metode">{{ r.metode }}</span>
+                  <span class="num">{{ r.k0 }} <i>({{ r.p0 }}%)</i></span>
+                  <span class="num distable__c1">{{ r.k1 }} <i>({{ r.p1 }}%)</i></span>
+                  <span class="num">{{ r.total }}</span>
+                </div>
+                {% endfor %}
+              </div>
+              <div class="balance-panel">
+                <span class="dist-core__title">Proporsi kelas — visual (hijau = churn 1)</span>
+                {% for b in resampling_bars %}
+                <div class="balance-row">
+                  <span class="balance-row__label">{{ b.label }}</span>
+                  <span class="balance-row__bar">
+                    <span class="balance-row__seg balance-row__seg--k0" style="--w: {{ b.p0|round(1) }}%"></span>
+                    <span class="balance-row__seg balance-row__seg--k1" style="--w: {{ b.p1|round(1) }}%"></span>
+                  </span>
+                  <span class="balance-row__pct num">{{ b.p0|round(1) }} : {{ b.p1|round(1) }}</span>
+                </div>
+                {% endfor %}
+              </div>
+              <p class="stage__data-note">SMOTE menaikkan kelas churn dengan sintesis tetangga terdekat ({{ resampling_rows[0].total }} → {{ resampling_rows[1].total }} baris); RUS menurunkan kelas 0 hingga setara ({{ resampling_rows[0].total }} → {{ resampling_rows[2].total }} baris). Keduanya menghasilkan rasio 50 : 50.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── TAHAP 5 · KLASIFIKASI ─── -->
+    <div class="stage reveal">
+      <div class="stage__side">
+        <span class="stage__num">05</span>
+        <h3 class="stage__name">Klasifikasi<br>Decision Tree</h3>
+        <span class="stage__pic">Marsha · model.py</span>
+      </div>
+      <div class="stage__body">
+        <div class="stage__qa">
+          <div class="qa">
+            <span class="qa__q">Apa?</span>
+            <p>Algoritma pohon keputusan: data dipecah berulang kali berdasarkan pertanyaan ambang batas (misalnya "usia &gt; 45?") hingga sampai di daun keputusan. Dua pohon dilatih — satu pada data hasil SMOTE, satu pada data hasil RUS (<code>random_state=42</code>).</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Untuk apa?</span>
+            <p>Menangkap pola non-linear antara fitur dan churn tanpa perlu asumsi bentuk hubungan, sekaligus mudah dijelaskan ke orang bisnis: jalur pohon bisa dibaca sebagai aturan "jika … maka …".</p>
+          </div>
+          <div class="qa">
+            <span class="qa__q">Kenapa Decision Tree?</span>
+            <p>Tidak sensitif terhadap <b>outlier</b> (yang kita pertahankan di tahap preprocessing), tidak butuh <b>normalisasi</b> (sehingga transformation cukup dengan encoding), serta mampu menangani campuran fitur numerik, biner, dan hasil encoding secara langsung.</p>
+          </div>
+        </div>
+        <div class="stage__data">
+          <div class="tree-grid">
+            <div class="tree-card">
+              <span class="tree-card__tag">Pohon SMOTE</span>
+              <div class="tree-card__stats">
+                <span><b>{{ anatomi_smote.depth }}</b><i>level dalam</i></span>
+                <span><b>{{ anatomi_smote.nodes }}</b><i>simpul</i></span>
+                <span><b>{{ anatomi_smote.leaves }}</b><i>daun keputusan</i></span>
+              </div>
+              <p class="tree-card__root">Pertanyaan akar pohon: <code>{{ anatomi_smote.root_fitur }} ≤ {{ anatomi_smote.root_ambang }}</code>?</p>
+            </div>
+            <div class="tree-card">
+              <span class="tree-card__tag tree-card__tag--rus">Pohon RUS</span>
+              <div class="tree-card__stats">
+                <span><b>{{ anatomi_rus.depth }}</b><i>level dalam</i></span>
+                <span><b>{{ anatomi_rus.nodes }}</b><i>simpul</i></span>
+                <span><b>{{ anatomi_rus.leaves }}</b><i>daun keputusan</i></span>
+              </div>
+              <p class="tree-card__root">Pertanyaan akar pohon: <code>{{ anatomi_rus.root_fitur }} ≤ {{ anatomi_rus.root_ambang }}</code>?</p>
+            </div>
+          </div>
+          <span class="dist-core__title">Fitur yang paling sering dipakai pohon memutus</span>
+          <div class="imp-list">
+            {% for f in importance[:6] %}
+            <div class="imp-row reveal">
+              <span class="imp-row__name"><code>{{ f.nama }}</code></span>
+              <span class="imp-row__track"><span class="imp-row__fill" style="--fill: {{ [f.nilai * 100 * 3, 100]|min }}%"></span></span>
+              <span class="imp-row__val">{{ '%.3f'|format(f.nilai) }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          <p class="stage__data-note">Diukur dari penurunan impurity (Gini) yang disumbang tiap fitur pada pohon hasil SMOTE — gambaran kasar "apa yang pohon pikirkan".</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ EVALUASI ══════════════ -->
+  <section class="section" id="evaluasi">
+    <div class="section__head">
+      <div class="eyebrow eyebrow--dim reveal">Tahap 06 · Testing &amp; Evaluasi · Robithoh</div>
+      <h2 class="section__title reveal">Siapa yang lebih baik:<br>SMOTE atau RUS?</h2>
+      <p class="section__sub reveal">
+        Kedua model diuji pada <b>data testing asli yang tidak di-resample</b> ({{ split_rows[1].jumlah }} baris).
+        Confusion Matrix memetakan prediksi vs kenyataan; dari situllah accuracy, precision, recall,
+        dan F1-Score dihitung — dengan kelas positif = churn (1).
+      </p>
+    </div>
+
+    {% for e in evaluasi %}
+    <div class="eval-block">
+      <div class="eval-block__head reveal">
+        <span class="eval-method {% if e['Metode'] == 'SMOTE' %}eval-method--smote{% else %}eval-method--rus{% endif %}">{{ e['Metode'] }}</span>
+        <span class="eval-block__sub">
+          {% if e['Metode'] == 'SMOTE' %}Oversampling — akurasi dan keseimbangan metrik terbaik{% else %}Undersampling — recall unggul, tetapi banyak nasabah bertahan salah divprediksi churn{% endif %}
+        </span>
+      </div>
+      <div class="metrics">
+        {% for m in ['Accuracy', 'Precision', 'Recall', 'F1-Score'] %}
+        <div class="metric-card reveal">
+          <div class="metric-card__bezel">
+            <span class="metric-card__value" data-count="{{ '%.4f'|format(e[m]) }}" data-decimals="4">0.0000</span>
+            <span class="metric-card__bar" style="--fill: {{ e[m] * 100 }}%"></span>
+            <span class="metric-card__label">{{ m }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="cm-grid">
+        <figure class="cm-figure reveal">
+          <div class="cm-figure__bezel">
+            <img src="img/confusion_matrix_{{ e['Metode']|lower }}.png" alt="Confusion Matrix {{ e['Metode'] }}" loading="lazy">
+          </div>
+          <figcaption>Confusion Matrix — {{ e['Metode'] }}</figcaption>
+        </figure>
+        <div class="cm-legend reveal">
+          <h4>Cara membaca</h4>
+          <p>
+            Baris = kondisi aktual, kolom = prediksi model.
+            Untuk kasus churn, <strong>Recall</strong> adalah metrik kunci:
+            seberapa banyak nasabah churn yang benar-benar tertangkap.
+            {{ e['Metode'] }} mencatat recall <b>{{ '%.4f'|format(e['Recall']) }}</b>
+            dengan akurasi keseluruhan <b>{{ '%.4f'|format(e['Accuracy']) }}</b>
+            {% if e['Metode'] == 'RUS' %}— recall tinggi, tetapi precision rendah: model cenderung
+            "curiga" berlebihan sehingga banyak nasabah setia salah diberi label churn.{% else %}—
+            keseimbangan precision–recall paling sehat di antara keduanya.{% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- ROC curve (gambar dihasilkan evaluation.py) -->
+    <figure class="cm-figure reveal">
+      <div class="cm-figure__bezel">
+        <img src="img/roc_curve.png" alt="Kurva ROC SMOTE vs RUS" loading="lazy">
+      </div>
+      <figcaption>Kurva ROC — SMOTE vs RUS · kelas positif churn (1) · dihasilkan evaluation.py</figcaption>
+    </figure>
+
+    <!-- Kesimpulan -->
+    <div class="bezel verdict-bezel reveal">
+      <div class="bezel__core verdict-core">
+        <span class="chip">Kesimpulan</span>
+        <p>
+          Dengan hasil aktual di atas, <b>SMOTE unggul secara keseluruhan</b> (akurasi
+          {{ '%.4f'|format(evaluasi[0]['Accuracy']) }} vs {{ '%.4f'|format(evaluasi[1]['Accuracy']) }}),
+          sedangkan <b>RUS lebih agresif menangkap churn</b> (recall
+          {{ '%.4f'|format(evaluasi[1]['Recall']) }} vs {{ '%.4f'|format(evaluasi[0]['Recall']) }})
+          dengan konsekuensi precision rendah. Pilihan akhir bergantung prioritas bank:
+          <em>akurasi menyeluruh</em> → SMOTE, atau <em>meminimalkan churn yang lolos</em> → RUS.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <span class="footer__brand">◈ Churn<em>Intel</em></span>
+      <p>
+        UTS Praktikum Pembelajaran Mesin — Implementasi Klasifikasi Decision Tree dengan
+        Resampling pada Data Bank Customer Churn. Semua angka di halaman ini dihitung
+        langsung dari output program, bukan diketik manual.
+      </p>
+      <span class="footer__meta">Flask · Scikit-learn · imbalanced-learn · Decision Tree · SMOTE / RUS</span>
+    </div>
+  </footer>
+
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>
