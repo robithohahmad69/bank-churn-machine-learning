@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+
+# Tooling lokal (bukan bagian tugas)
+.claude/
+.agents/
+skills-lock.json
+
+# File kerja sementara
+_*_check*.png
